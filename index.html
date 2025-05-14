@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CineBestial - Catálogo</title>
   <style>
     body {
@@ -38,7 +38,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 20px;
     }
 
@@ -78,10 +78,13 @@
       font-weight: bold;
       margin-top: 5px;
     }
+
+    .price span {
+      display: block;
+    }
   </style>
 </head>
 <body>
-
   <h1>🎬 CineBestial - Catálogo</h1>
 
   <div class="controls">
@@ -95,13 +98,14 @@
 
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?output=csv";
+    const TIPO_CAMBIO = 3.7;
 
     let productos = [];
 
     async function cargarDatos() {
       const res = await fetch(sheetURL);
       const data = await res.text();
-      const rows = data.split("\n").slice(1); // saltar encabezado
+      const rows = data.split("\n").slice(1);
 
       productos = rows.map(row => {
         const cols = row.split(",");
@@ -111,7 +115,7 @@
           imagen: cols[2],
           descripcion: cols[3],
           categoria: cols[4],
-          precio: cols[5]
+          precio: parseFloat(cols[5])
         };
       });
 
@@ -140,13 +144,15 @@
           <img src="${p.imagen}" alt="${p.nombre}">
           <h3>${p.nombre}</h3>
           <p>${p.descripcion}</p>
-          <p class="price">${p.precio}</p>
+          <p class="price">
+            <span>S/. ${p.precio.toFixed(2)}</span>
+            <span>US$ ${(p.precio / TIPO_CAMBIO).toFixed(2)}</span>
+          </p>
         `;
         contenedor.appendChild(card);
       });
     }
 
-    // Buscador y Filtros
     document.getElementById("searchInput").addEventListener("input", filtrar);
     document.getElementById("categoryFilter").addEventListener("change", filtrar);
 
