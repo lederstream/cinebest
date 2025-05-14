@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CineBestial - Servicios</title>
+  <title>CineBestial - Catálogo</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #111;
+      background-color: #0e0e0e;
       color: #fff;
       margin: 0;
       padding: 20px;
@@ -16,13 +16,30 @@
     h1 {
       text-align: center;
       color: #f39c12;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input, select {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      width: 90%;
+      max-width: 400px;
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 20px;
-      margin-top: 30px;
     }
 
     .card {
@@ -38,7 +55,7 @@
     }
 
     .card img {
-      max-width: 100%;
+      width: 100%;
       height: 150px;
       object-fit: contain;
       border-radius: 10px;
@@ -56,52 +73,94 @@
       color: #ccc;
     }
 
-    .card .price {
-      margin-top: 8px;
+    .price {
       color: #2ecc71;
       font-weight: bold;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
 
-  <h1>🎬 Catálogo de CineBestial</h1>
+  <h1>🎬 CineBestial - Catálogo</h1>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="🔍 Buscar servicio...">
+    <select id="categoryFilter">
+      <option value="Todas">Todas las categorías</option>
+    </select>
+  </div>
+
   <div class="grid" id="productos"></div>
 
   <script>
-    // Reemplaza con el enlace público de tu hoja CSV
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?output=csv";
 
-    async function cargarProductos() {
+    let productos = [];
+
+    async function cargarDatos() {
       const res = await fetch(sheetURL);
       const data = await res.text();
+      const rows = data.split("\n").slice(1); // saltar encabezado
 
-      const rows = data.split('\n').slice(1); // Saltamos encabezado
-      const productosDiv = document.getElementById('productos');
+      productos = rows.map(row => {
+        const cols = row.split(",");
+        return {
+          id: cols[0],
+          nombre: cols[1],
+          imagen: cols[2],
+          descripcion: cols[3],
+          categoria: cols[4],
+          precio: cols[5]
+        };
+      });
 
-      rows.forEach(row => {
-        const cols = row.split(',');
+      actualizarCategorias();
+      mostrarProductos(productos);
+    }
 
-        const nombre = cols[0];
-        const imagen = cols[1];
-        const descripcion = cols[2];
-        const categoria = cols[3];
-        const precio = cols[4];
-
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <img src="${imagen}" alt="${nombre}">
-          <h3>${nombre}</h3>
-          <p>${descripcion}</p>
-          <p class="price">${precio}</p>
-        `;
-
-        productosDiv.appendChild(card);
+    function actualizarCategorias() {
+      const select = document.getElementById("categoryFilter");
+      const categorias = [...new Set(productos.map(p => p.categoria))];
+      categorias.forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
       });
     }
 
-    cargarProductos();
+    function mostrarProductos(lista) {
+      const contenedor = document.getElementById("productos");
+      contenedor.innerHTML = "";
+      lista.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <img src="${p.imagen}" alt="${p.nombre}">
+          <h3>${p.nombre}</h3>
+          <p>${p.descripcion}</p>
+          <p class="price">${p.precio}</p>
+        `;
+        contenedor.appendChild(card);
+      });
+    }
+
+    // Buscador y Filtros
+    document.getElementById("searchInput").addEventListener("input", filtrar);
+    document.getElementById("categoryFilter").addEventListener("change", filtrar);
+
+    function filtrar() {
+      const texto = document.getElementById("searchInput").value.toLowerCase();
+      const categoria = document.getElementById("categoryFilter").value;
+      const filtrados = productos.filter(p =>
+        (categoria === "Todas" || p.categoria === categoria) &&
+        (p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto))
+      );
+      mostrarProductos(filtrados);
+    }
+
+    cargarDatos();
   </script>
 </body>
 </html>
