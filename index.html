@@ -2,60 +2,51 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CineBestial - Catálogo</title>
   <style>
     :root {
-      --fondo: #0e0e0e;
-      --primario: #f39c12;
-      --texto: #f0f0f0;
-      --card-bg: #1c1c1c;
-      --verde: #2ecc71;
-      --sombra: rgba(0, 0, 0, 0.6);
-    }
-
-    * {
-      box-sizing: border-box;
+      --bg-color: #0d0f1a;
+      --card-bg: #1c2233;
+      --highlight: #00ffe7;
+      --accent: #f39c12;
+      --text-light: #e0e0e0;
+      --text-muted: #999;
+      --price-color: #2ecc71;
     }
 
     body {
-      margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background-color: var(--fondo);
-      color: var(--texto);
+      background-color: var(--bg-color);
+      color: var(--text-light);
+      margin: 0;
       padding: 20px;
     }
 
     h1 {
       text-align: center;
-      color: var(--primario);
-      margin-bottom: 10px;
-      font-size: 2.5rem;
+      color: var(--highlight);
+      font-size: 2.5em;
+      margin-bottom: 20px;
     }
 
     .controls {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 30px;
     }
 
     input, select {
-      padding: 12px 15px;
+      padding: 12px;
       border-radius: 10px;
       border: none;
       font-size: 16px;
-      width: 100%;
+      width: 90%;
       max-width: 400px;
-      background-color: #2a2a2a;
-      color: #fff;
-      transition: 0.3s ease;
-    }
-
-    input:focus, select:focus {
-      outline: none;
-      background-color: #3a3a3a;
+      background-color: var(--card-bg);
+      color: var(--text-light);
     }
 
     .grid {
@@ -64,75 +55,60 @@
       gap: 20px;
     }
 
-    @media (min-width: 1280px) {
-      .grid {
-        grid-template-columns: repeat(5, 1fr);
-      }
-    }
-
     .card {
       background: var(--card-bg);
-      padding: 16px;
+      padding: 15px;
       border-radius: 15px;
-      box-shadow: 0 4px 10px var(--sombra);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      animation: fadeIn 0.5s ease-in-out;
+      box-shadow: 0 4px 20px rgba(0, 255, 231, 0.15);
+      transition: transform 0.3s, box-shadow 0.3s;
     }
 
     .card:hover {
-      transform: translateY(-5px) scale(1.03);
-      box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
+      transform: scale(1.03);
+      box-shadow: 0 0 20px var(--highlight);
     }
 
     .card img {
       width: 100%;
-      height: 160px;
+      height: 150px;
       object-fit: contain;
       border-radius: 10px;
       margin-bottom: 10px;
-      transition: transform 0.4s ease;
-    }
-
-    .card:hover img {
-      transform: scale(1.05);
     }
 
     .card h3 {
-      font-size: 1.2rem;
-      color: var(--primario);
-      text-align: center;
-      margin: 5px 0;
+      margin: 0;
+      font-size: 20px;
+      color: var(--accent);
     }
 
     .card p {
       font-size: 14px;
-      color: #ccc;
-      text-align: center;
+      color: var(--text-muted);
     }
 
     .price {
-      margin-top: 10px;
-      text-align: center;
-    }
-
-    .price span {
-      display: block;
-      color: var(--verde);
+      color: var(--price-color);
       font-weight: bold;
-      font-size: 16px;
+      margin-top: 8px;
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
+    .plan-selector {
+      margin-top: 10px;
+    }
+
+    .plan-selector select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: var(--text-light);
+    }
+
+    @media (min-width: 1200px) {
+      .grid {
+        grid-template-columns: repeat(5, 1fr);
       }
     }
   </style>
@@ -168,7 +144,20 @@
           imagen: cols[2],
           descripcion: cols[3],
           categoria: cols[4],
-          precio: parseFloat(cols[5])
+          tipo: cols[5].toLowerCase(), // "servicio" o "credito"
+          planes: {
+            "1": parseFloat(cols[6]),
+            "2": parseFloat(cols[7]),
+            "3": parseFloat(cols[8]),
+            "6": parseFloat(cols[9]),
+            "12": parseFloat(cols[10])
+          },
+          creditos: {
+            "1": parseFloat(cols[11]),
+            "5": parseFloat(cols[12]),
+            "10": parseFloat(cols[13]),
+            "20": parseFloat(cols[14])
+          }
         };
       });
 
@@ -190,18 +179,68 @@
     function mostrarProductos(lista) {
       const contenedor = document.getElementById("productos");
       contenedor.innerHTML = "";
+
       lista.forEach(p => {
         const card = document.createElement("div");
         card.className = "card";
+
+        const selector = document.createElement("select");
+        selector.classList.add("plan-dropdown");
+
+        let precios, opciones;
+
+        if (p.tipo === "servicio") {
+          precios = p.planes;
+          opciones = Object.keys(p.planes).filter(k => !isNaN(precios[k]));
+          opciones.forEach(op => {
+            const option = document.createElement("option");
+            option.value = op;
+            option.textContent = `${op} mes${op === "1" ? "" : "es"}`;
+            selector.appendChild(option);
+          });
+        } else {
+          precios = p.creditos;
+          opciones = Object.keys(p.creditos).filter(k => !isNaN(precios[k]));
+          opciones.forEach(op => {
+            const option = document.createElement("option");
+            option.value = op;
+            option.textContent = `${op} crédito${op === "1" ? "" : "s"}`;
+            selector.appendChild(option);
+          });
+        }
+
+        const precioInicial = precios[opciones[0]] || 0;
+        const soles = precioInicial.toFixed(2);
+        const dolares = (precioInicial / TIPO_CAMBIO).toFixed(2);
+
         card.innerHTML = `
           <img src="${p.imagen}" alt="${p.nombre}">
           <h3>${p.nombre}</h3>
           <p>${p.descripcion}</p>
-          <div class="price">
-            <span>S/ ${p.precio.toFixed(2)}</span>
-            <span>US$ ${(p.precio / TIPO_CAMBIO).toFixed(2)}</span>
-          </div>
         `;
+
+        const planDiv = document.createElement("div");
+        planDiv.className = "plan-selector";
+        planDiv.appendChild(selector);
+
+        const precio = document.createElement("p");
+        precio.className = "price";
+        precio.innerHTML = `
+          <span class="soles">S/. ${soles}</span> |
+          <span class="dolares">US$ ${dolares}</span>
+        `;
+
+        selector.addEventListener("change", () => {
+          const val = selector.value;
+          const nuevoPrecio = precios[val];
+          if (!isNaN(nuevoPrecio)) {
+            precio.querySelector(".soles").textContent = `S/. ${nuevoPrecio.toFixed(2)}`;
+            precio.querySelector(".dolares").textContent = `US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
+          }
+        });
+
+        card.appendChild(planDiv);
+        card.appendChild(precio);
         contenedor.appendChild(card);
       });
     }
