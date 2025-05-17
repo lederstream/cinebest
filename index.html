@@ -14,6 +14,8 @@
       --text-light: #e0e0e0;
       --text-muted: #999;
       --price-color: #2ecc71;
+      --btn-bg: #00ffe7;
+      --btn-hover: #00cfc1;
     }
 
     body {
@@ -39,6 +41,12 @@
       margin-bottom: 30px;
     }
 
+    .controls input {
+      background: url('https://img.icons8.com/ios-glyphs/30/ffffff/search--v1.png') no-repeat 10px center;
+      background-size: 20px;
+      padding-left: 40px;
+    }
+
     input, select {
       padding: 12px;
       border-radius: 10px;
@@ -52,7 +60,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
     }
 
@@ -62,10 +70,13 @@
       border-radius: 15px;
       box-shadow: 0 4px 20px rgba(0, 255, 231, 0.15);
       transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .card:hover {
-      transform: scale(1.03);
+      transform: scale(1.02);
       box-shadow: 0 0 20px var(--highlight);
     }
 
@@ -91,7 +102,7 @@
     .price {
       color: var(--price-color);
       font-weight: bold;
-      margin-top: 8px;
+      margin: 8px 0;
     }
 
     .plan-selector {
@@ -107,6 +118,64 @@
       color: var(--text-light);
     }
 
+    .card-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .card-buttons button {
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background-color: var(--btn-bg);
+      color: #000;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .card-buttons button:hover {
+      background-color: var(--btn-hover);
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    .modal-content {
+      background-color: #fff;
+      color: #000;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .modal-content h2 {
+      margin-top: 0;
+    }
+
+    .modal-content button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
     @media (min-width: 1200px) {
       .grid {
         grid-template-columns: repeat(5, 1fr);
@@ -118,7 +187,7 @@
   <h1>🎬 CineBestial - Catálogo</h1>
 
   <div class="controls">
-    <input type="text" id="searchInput" placeholder="🔍 Buscar servicio...">
+    <input type="text" id="searchInput" placeholder="Buscar servicio...">
     <select id="categoryFilter">
       <option value="Todas">Todas las categorías</option>
     </select>
@@ -126,17 +195,24 @@
 
   <div class="grid" id="productos"></div>
 
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h2>Términos y Condiciones</h2>
+      <p>Este servicio se proporciona tal cual. No se aceptan devoluciones. Consulte directamente con el proveedor para más detalles.</p>
+      <button onclick="document.getElementById('modal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+
   <script>
     const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?output=csv";
     const TIPO_CAMBIO = 3.7;
-
     let productos = [];
 
     async function cargarDatos() {
       const res = await fetch(sheetURL);
       const data = await res.text();
       const rows = data.split("\n").slice(1);
-
       productos = rows.map(row => {
         const cols = row.split(",");
         return {
@@ -145,7 +221,7 @@
           imagen: cols[2],
           descripcion: cols[3],
           categoria: cols[4],
-          tipo: cols[5].toLowerCase(), // "servicio" o "credito"
+          tipo: cols[5].toLowerCase(),
           planes: {
             "1": parseFloat(cols[6]),
             "3": parseFloat(cols[7]),
@@ -230,22 +306,27 @@
 
         const precio = document.createElement("p");
         precio.className = "price";
-        precio.innerHTML = `
-          <span class="soles">S/. ${soles}</span> |
-          <span class="dolares">US$ ${dolares}</span>
-        `;
+        precio.innerHTML = `S/. ${soles} | US$ ${dolares}`;
 
         selector.addEventListener("change", () => {
           const val = selector.value;
           const nuevoPrecio = precios[val];
           if (!isNaN(nuevoPrecio)) {
-            precio.querySelector(".soles").textContent = `S/. ${nuevoPrecio.toFixed(2)}`;
-            precio.querySelector(".dolares").textContent = `US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
+            precio.innerHTML = `S/. ${nuevoPrecio.toFixed(2)} | US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
           }
         });
 
+        const botones = document.createElement("div");
+        botones.className = "card-buttons";
+        botones.innerHTML = `
+          <button onclick="alert('Detalles de: ${p.nombre}')">Ver Detalles</button>
+          <button onclick="window.open('https://wa.me/51987654321?text=Hola%20quiero%20información%20sobre%20${encodeURIComponent(p.nombre)}')">Contactar</button>
+          <button onclick="document.getElementById('modal').style.display='flex'">Términos</button>
+        `;
+
         card.appendChild(planDiv);
         card.appendChild(precio);
+        card.appendChild(botones);
         contenedor.appendChild(card);
       });
     }
