@@ -115,6 +115,17 @@
   </style>
 </head>
 <body>
+  <!-- Modal de detalles por producto -->
+<div id="modalDetalles" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background: var(--card-bg); padding: 30px; border-radius: 20px; max-width: 600px; text-align: center; position: relative; box-shadow: 0 0 30px var(--highlight);">
+    <h2 style="color: var(--highlight); margin-top: 0;">Título del Servicio</h2>
+    <p style="color: var(--text-light); font-size: 16px; line-height: 1.6;">Descripción detallada aquí.</p>
+    <button onclick="cerrarModalDetalles()" style="margin-top: 20px; padding: 10px 20px; background: var(--accent); border: none; color: white; font-weight: bold; border-radius: 10px; cursor: pointer;">
+      Cerrar
+    </button>
+  </div>
+</div>
+
   <h1>🎬 CineBestial - Catálogo</h1>
 
   <div class="controls">
@@ -126,144 +137,139 @@
 
   <div class="grid" id="productos"></div>
 
-  <script>
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?output=csv";
-    const TIPO_CAMBIO = 3.9;
+<script>
+  const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?output=csv";
+  const TIPO_CAMBIO = 3.9;
+  let productos = [];
 
-    let productos = [];
+  async function cargarDatos() {
+    const res = await fetch(sheetURL);
+    const data = await res.text();
+    const rows = data.split("\n").slice(1);
 
-    async function cargarDatos() {
-      const res = await fetch(sheetURL);
-      const data = await res.text();
-      const rows = data.split("\n").slice(1);
+    productos = rows.map(row => {
+      const cols = row.split(",");
+      return {
+        id: cols[0],
+        nombre: cols[1],
+        imagen: cols[2],
+        descripcion: cols[3],
+        categoria: cols[4],
+        tipo: cols[5].toLowerCase(),
+        detalle: cols[7] || "Próximamente se añadirá información detallada.",
+        
+        planesPersonalizados: (cols[6] || "").split("|").map(entry => {
+        const [nombre, precio] = entry.split(":");
+        return { nombre: nombre?.trim(), precio: parseFloat(precio) };
+      }).filter(p => p.nombre && !isNaN(p.precio)),
+      };
+    });
 
-      productos = rows.map(row => {
-        const cols = row.split(",");
-        return {
-          id: cols[0],
-          nombre: cols[1],
-          imagen: cols[2],
-          descripcion: cols[3],
-          categoria: cols[4],
-          tipo: cols[5].toLowerCase(), // "servicio" o "credito"
-          planes: {
-            "1": parseFloat(cols[6]),
-            "3": parseFloat(cols[7]),
-            "6": parseFloat(cols[8]),
-            "12": parseFloat(cols[9])
-          },
-          creditos: {
-            "10": parseFloat(cols[10]),
-            "20": parseFloat(cols[11]),
-            "30": parseFloat(cols[12]),
-            "50": parseFloat(cols[13]),
-            "100": parseFloat(cols[14]),
-            "200": parseFloat(cols[15]),
-            "300": parseFloat(cols[16]),
-            "500": parseFloat(cols[17]),
-            "1000": parseFloat(cols[18])
-          }
-        };
-      });
+    actualizarCategorias();
+    mostrarProductos(productos);
+  }
 
-      actualizarCategorias();
-      mostrarProductos(productos);
-    }
+  function actualizarCategorias() {
+    const select = document.getElementById("categoryFilter");
+    const categorias = [...new Set(productos.map(p => p.categoria))];
+    categorias.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat;
+      option.textContent = cat;
+      select.appendChild(option);
+    });
+  }
 
-    function actualizarCategorias() {
-      const select = document.getElementById("categoryFilter");
-      const categorias = [...new Set(productos.map(p => p.categoria))];
-      categorias.forEach(cat => {
+  function mostrarProductos(lista) {
+    const contenedor = document.getElementById("productos");
+    contenedor.innerHTML = "";
+
+    lista.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const selector = document.createElement("select");
+      selector.classList.add("plan-dropdown");
+
+      let precios = {};
+      p.planesPersonalizados.forEach((plan, idx) => {
         const option = document.createElement("option");
-        option.value = cat;
-        option.textContent = cat;
-        select.appendChild(option);
+        option.value = idx;
+        option.textContent = plan.nombre;
+        selector.appendChild(option);
+        precios[idx] = plan.precio;
       });
-    }
 
-    function mostrarProductos(lista) {
-      const contenedor = document.getElementById("productos");
-      contenedor.innerHTML = "";
 
-      lista.forEach(p => {
-        const card = document.createElement("div");
-        card.className = "card";
+      const precioInicial = precios["0"] || 0;
+      const soles = precioInicial.toFixed(2);
+      const dolares = (precioInicial / TIPO_CAMBIO).toFixed(2);
 
-        const selector = document.createElement("select");
-        selector.classList.add("plan-dropdown");
+      card.innerHTML = `
+        <img src="${p.imagen}" alt="${p.nombre}">
+        <h3>${p.nombre}</h3>
+        <p>${p.descripcion}</p>
+      `;
 
-        let precios, opciones;
+      const planDiv = document.createElement("div");
+      planDiv.className = "plan-selector";
+      planDiv.appendChild(selector);
 
-        if (p.tipo === "servicio") {
-          precios = p.planes;
-          opciones = Object.keys(p.planes).filter(k => !isNaN(precios[k]));
-          opciones.forEach(op => {
-            const option = document.createElement("option");
-            option.value = op;
-            option.textContent = `${op} mes${op === "1" ? "" : "es"}`;
-            selector.appendChild(option);
-          });
-        } else {
-          precios = p.creditos;
-          opciones = Object.keys(p.creditos).filter(k => !isNaN(precios[k]));
-          opciones.forEach(op => {
-            const option = document.createElement("option");
-            option.value = op;
-            option.textContent = `${op} crédito${op === "1" ? "" : "s"}`;
-            selector.appendChild(option);
-          });
+      const precio = document.createElement("p");
+      precio.className = "price";
+      precio.innerHTML = `
+        <span class="soles">S/. ${soles}</span> |
+        <span class="dolares">US$ ${dolares}</span>
+      `;
+
+      selector.addEventListener("change", () => {
+        const val = selector.value;
+        const nuevoPrecio = precios[val];
+        if (!isNaN(nuevoPrecio)) {
+          precio.querySelector(".soles").textContent = `S/. ${nuevoPrecio.toFixed(2)}`;
+          precio.querySelector(".dolares").textContent = `US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
         }
-
-        const precioInicial = precios[opciones[0]] || 0;
-        const soles = precioInicial.toFixed(2);
-        const dolares = (precioInicial / TIPO_CAMBIO).toFixed(2);
-
-        card.innerHTML = `
-          <img src="${p.imagen}" alt="${p.nombre}">
-          <h3>${p.nombre}</h3>
-          <p>${p.descripcion}</p>
-        `;
-
-        const planDiv = document.createElement("div");
-        planDiv.className = "plan-selector";
-        planDiv.appendChild(selector);
-
-        const precio = document.createElement("p");
-        precio.className = "price";
-        precio.innerHTML = `
-          <span class="soles">S/. ${soles}</span> |
-          <span class="dolares">US$ ${dolares}</span>
-        `;
-
-        selector.addEventListener("change", () => {
-          const val = selector.value;
-          const nuevoPrecio = precios[val];
-          if (!isNaN(nuevoPrecio)) {
-            precio.querySelector(".soles").textContent = `S/. ${nuevoPrecio.toFixed(2)}`;
-            precio.querySelector(".dolares").textContent = `US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
-          }
-        });
-
-        card.appendChild(planDiv);
-        card.appendChild(precio);
-        contenedor.appendChild(card);
       });
-    }
 
-    document.getElementById("searchInput").addEventListener("input", filtrar);
-    document.getElementById("categoryFilter").addEventListener("change", filtrar);
+      const botonDetalles = document.createElement("button");
+      botonDetalles.textContent = "Detalles";
+      botonDetalles.style = "margin-top:10px; padding:10px; border:none; border-radius:10px; background: var(--highlight); color: #000; font-weight:bold; cursor:pointer;";
+      botonDetalles.onclick = () => mostrarModalDetalles(p.nombre, p.detalle);
 
-    function filtrar() {
-      const texto = document.getElementById("searchInput").value.toLowerCase();
-      const categoria = document.getElementById("categoryFilter").value;
-      const filtrados = productos.filter(p =>
-        (categoria === "Todas" || p.categoria === categoria) &&
-        (p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto))
-      );
-      mostrarProductos(filtrados);
-    }
+      card.appendChild(planDiv);
+      card.appendChild(precio);
+      card.appendChild(botonDetalles);
+      contenedor.appendChild(card);
+    });
+  }
 
-    cargarDatos();
-  </script>
+  function mostrarModalDetalles(nombre, detalle) {
+    const modal = document.getElementById("modalDetalles");
+    const titulo = modal.querySelector("h2");
+    const cuerpo = modal.querySelector("p");
+    titulo.textContent = nombre;
+    cuerpo.textContent = detalle;
+    modal.style.display = "flex";
+  }
+
+  function cerrarModalDetalles() {
+    document.getElementById("modalDetalles").style.display = "none";
+  }
+
+  document.getElementById("searchInput").addEventListener("input", filtrar);
+  document.getElementById("categoryFilter").addEventListener("change", filtrar);
+
+  function filtrar() {
+    const texto = document.getElementById("searchInput").value.toLowerCase();
+    const categoria = document.getElementById("categoryFilter").value;
+    const filtrados = productos.filter(p =>
+      (categoria === "Todas" || p.categoria === categoria) &&
+      (p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto))
+    );
+    mostrarProductos(filtrados);
+  }
+
+  cargarDatos();
+</script>
 </body>
 </html>
