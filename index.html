@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="icon" href="logo.webp">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <title>CineBestial - Catálogo</title>
   <style>
     :root {
@@ -142,33 +143,35 @@
   const TIPO_CAMBIO = 3.9;
   let productos = [];
 
-  async function cargarDatos() {
-    const res = await fetch(sheetURL);
-    const data = await res.text();
-    const rows = data.split("\n").slice(1);
+async function cargarDatos() {
+  const res = await fetch(sheetURL);
+  const csv = await res.text();
 
-    productos = rows.map(row => {
-      const cols = row.split(",");
+  const parsed = Papa.parse(csv, {
+    header: true,
+    skipEmptyLines: true
+  });
+
+  productos = parsed.data.map(cols => ({
+    id: cols["ID"],
+    nombre: cols["Nombre del Servicio"],
+    imagen: cols["Imagen"],
+    descripcion: cols["Descripción"],
+    categoria: cols["Categoría"],
+    tipo: (cols["Tipo"] || "").toLowerCase(),
+    detalles: cols["Detalles"]?.trim() || "",
+    planesPersonalizados: (cols["Planes y Precios"] || "").split("|").map(entry => {
+      const [nombre, precio] = entry.split(":");
       return {
-        id: cols[0],
-        nombre: cols[1],
-        imagen: cols[2],
-        descripcion: cols[3],
-        categoria: cols[4],
-        tipo: cols[5].toLowerCase(),
-        detalle: cols[7] || "Próximamente se añadirá información detallada.",
-        
-        planesPersonalizados: (cols[6] || "").split("|").map(entry => {
-        const [nombre, precio] = entry.split(":");
-        return { nombre: nombre?.trim(), precio: parseFloat(precio) };
-      }).filter(p => p.nombre && !isNaN(p.precio)),
+        nombre: nombre?.trim(),
+        precio: parseFloat(precio)
       };
-    });
+    }).filter(p => p.nombre && !isNaN(p.precio))
+  }));
 
-    actualizarCategorias();
-    mostrarProductos(productos);
-  }
-
+  actualizarCategorias();
+  mostrarProductos(productos);
+}
   function actualizarCategorias() {
     const select = document.getElementById("categoryFilter");
     const categorias = [...new Set(productos.map(p => p.categoria))];
@@ -234,7 +237,7 @@
       const botonDetalles = document.createElement("button");
       botonDetalles.textContent = "Detalles";
       botonDetalles.style = "margin-top:10px; padding:10px; border:none; border-radius:10px; background: var(--highlight); color: #000; font-weight:bold; cursor:pointer;";
-      botonDetalles.onclick = () => mostrarModalDetalles(p.nombre, p.detalle);
+      botonDetalles.onclick = () => mostrarModalDetalles(p.nombre, p.detalles);
 
       card.appendChild(planDiv);
       card.appendChild(precio);
@@ -248,7 +251,7 @@
     const titulo = modal.querySelector("h2");
     const cuerpo = modal.querySelector("p");
     titulo.textContent = nombre;
-    cuerpo.textContent = detalle;
+    cuerpo.innerHTML = detalle.replace(/\n/g, "<br>");
     modal.style.display = "flex";
   }
 
