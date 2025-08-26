@@ -1,4 +1,4 @@
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?gid=0&single=true&output=csv";
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbKwdz96U-UvqfTDtGPL0zUziDnARLOz249Gdc4CApl_PQ-nt1jQpC15S_UOwawE2SGK2yms6_AwXM/pub?gid=0&single=true&output=csv";
 const TIPO_CAMBIO = 3.6;
 let productos = [];
 
