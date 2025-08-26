@@ -1,278 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" href="logo.webp">
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <title>CineBestial - Catálogo</title>
-  <style>
-    :root {
-      --bg-color: #0d0f1a;
-      --card-bg: #1c2233;
-      --highlight: #00ffe7;
-      --accent: #f39c12;
-      --text-light: #e0e0e0;
-      --text-muted: #999;
-      --price-color: #2ecc71;
-    }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-light);
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-      color: var(--highlight);
-      font-size: 2.5em;
-      margin-bottom: 20px;
-    }
-
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 30px;
-    }
-
-    input, select {
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 16px;
-      width: 90%;
-      max-width: 400px;
-      background-color: var(--card-bg);
-      color: var(--text-light);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-    }
-
-    .card {
-      background: var(--card-bg);
-      padding: 15px;
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0, 255, 231, 0.15);
-      transition: transform 0.3s, box-shadow 0.3s;
-    }
-
-    .card:hover {
-      transform: scale(1.03);
-      box-shadow: 0 0 20px var(--highlight);
-    }
-
-    .card img {
-      width: 100%;
-      height: 150px;
-      object-fit: contain;
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-
-    .card h3 {
-      margin: 0;
-      font-size: 20px;
-      color: var(--accent);
-    }
-
-    .card p {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    .price {
-      color: var(--price-color);
-      font-weight: bold;
-      margin-top: 8px;
-    }
-
-    .plan-selector {
-      margin-top: 10px;
-    }
-
-    .plan-selector select {
-      width: 100%;
-      padding: 8px;
-      border-radius: 10px;
-      border: none;
-      background: rgba(255,255,255,0.1);
-      color: var(--text-light);
-    }
-
-    @media (min-width: 1200px) {
-      .grid {
-        grid-template-columns: repeat(5, 1fr);
-      }
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="icon" href="logo.webp">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <title>CineBestial - Catálogo</title>
 </head>
 <body>
-  <!-- Modal de detalles por producto -->
-<div id="modalDetalles" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
-  <div style="background: var(--card-bg); padding: 30px; border-radius: 20px; max-width: 600px; text-align: center; position: relative; box-shadow: 0 0 30px var(--highlight);">
-    <h2 style="color: var(--highlight); margin-top: 0;">Título del Servicio</h2>
-    <p style="color: var(--text-light); font-size: 16px; line-height: 1.6;">Descripción detallada aquí.</p>
-    <button onclick="cerrarModalDetalles()" style="margin-top: 20px; padding: 10px 20px; background: var(--accent); border: none; color: white; font-weight: bold; border-radius: 10px; cursor: pointer;">
-      Cerrar
-    </button>
-  </div>
-</div>
+    <div id="modalDetalles" class="modal-detalles">
+        <div class="modal-content">
+            <h2 id="modalTitle">Título del Servicio</h2>
+            <p id="modalDescription">Descripción detallada aquí.</p>
+            <button onclick="cerrarModalDetalles()" class="close-button">Cerrar</button>
+        </div>
+    </div>
 
-  <h1>🎬 CineBestial - Catálogo</h1>
+    <h1>🎬 CineBestial - Catálogo</h1>
 
-  <div class="controls">
-    <input type="text" id="searchInput" placeholder="🔍 Buscar servicio...">
-    <select id="categoryFilter">
-      <option value="Todas">Todas las categorías</option>
-    </select>
-  </div>
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="🔍 Buscar servicio...">
+        <select id="categoryFilter">
+            <option value="Todas">Todas las categorías</option>
+        </select>
+    </div>
 
-  <div class="grid" id="productos"></div>
+    <div class="grid" id="productos"></div>
 
-<script>
-  const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSIvEj8U2JtLfPNDtavQTJV37MawCBFM8SXCR89lOiFxvslrVPMRCI3Ki7R5fLMgJCVUXOX9pWY-rok/pub?gid=0&single=true&output=csv";
-  const TIPO_CAMBIO = 3.9;
-  let productos = [];
-
-async function cargarDatos() {
-  const res = await fetch(sheetURL);
-  const csv = await res.text();
-
-  const parsed = Papa.parse(csv, {
-    header: true,
-    skipEmptyLines: true
-  });
-
-  productos = parsed.data.map(cols => ({
-    id: cols["ID"],
-    nombre: cols["Nombre del Servicio"],
-    imagen: cols["Imagen"],
-    descripcion: cols["Descripción"],
-    categoria: cols["Categoría"],
-    tipo: (cols["Tipo"] || "").toLowerCase(),
-    detalles: cols["Detalles"]?.trim() || "",
-    planesPersonalizados: (cols["Planes y Precios"] || "").split("|").map(entry => {
-      const [nombre, precio] = entry.split(":");
-      return {
-        nombre: nombre?.trim(),
-        precio: parseFloat(precio)
-      };
-    }).filter(p => p.nombre && !isNaN(p.precio))
-  }));
-
-  actualizarCategorias();
-  mostrarProductos(productos);
-}
-  function actualizarCategorias() {
-    const select = document.getElementById("categoryFilter");
-    const categorias = [...new Set(productos.map(p => p.categoria))];
-    categorias.forEach(cat => {
-      const option = document.createElement("option");
-      option.value = cat;
-      option.textContent = cat;
-      select.appendChild(option);
-    });
-  }
-
-  function mostrarProductos(lista) {
-    const contenedor = document.getElementById("productos");
-    contenedor.innerHTML = "";
-
-    lista.forEach(p => {
-      const card = document.createElement("div");
-      card.className = "card";
-
-      const selector = document.createElement("select");
-      selector.classList.add("plan-dropdown");
-
-      let precios = {};
-      p.planesPersonalizados.forEach((plan, idx) => {
-        const option = document.createElement("option");
-        option.value = idx;
-        option.textContent = plan.nombre;
-        selector.appendChild(option);
-        precios[idx] = plan.precio;
-      });
-
-
-      const precioInicial = precios["0"] || 0;
-      const soles = precioInicial.toFixed(2);
-      const dolares = (precioInicial / TIPO_CAMBIO).toFixed(2);
-
-      card.innerHTML = `
-        <img src="${p.imagen}" alt="${p.nombre}">
-        <h3>${p.nombre}</h3>
-        <p>${p.descripcion}</p>
-      `;
-
-      const planDiv = document.createElement("div");
-      planDiv.className = "plan-selector";
-      planDiv.appendChild(selector);
-
-      const precio = document.createElement("p");
-      precio.className = "price";
-      precio.innerHTML = `
-        <span class="soles">S/. ${soles}</span> |
-        <span class="dolares">US$ ${dolares}</span>
-      `;
-
-      selector.addEventListener("change", () => {
-        const val = selector.value;
-        const nuevoPrecio = precios[val];
-        if (!isNaN(nuevoPrecio)) {
-          precio.querySelector(".soles").textContent = `S/. ${nuevoPrecio.toFixed(2)}`;
-          precio.querySelector(".dolares").textContent = `US$ ${(nuevoPrecio / TIPO_CAMBIO).toFixed(2)}`;
-        }
-      });
-
-      const botonDetalles = document.createElement("button");
-      botonDetalles.textContent = "Detalles";
-      botonDetalles.style = "margin-top:10px; padding:10px; border:none; border-radius:10px; background: var(--highlight); color: #000; font-weight:bold; cursor:pointer;";
-      botonDetalles.onclick = () => mostrarModalDetalles(p.nombre, p.detalles);
-
-      card.appendChild(planDiv);
-      card.appendChild(precio);
-      card.appendChild(botonDetalles);
-      contenedor.appendChild(card);
-    });
-  }
-
-  function mostrarModalDetalles(nombre, detalle) {
-    const modal = document.getElementById("modalDetalles");
-    const titulo = modal.querySelector("h2");
-    const cuerpo = modal.querySelector("p");
-    titulo.textContent = nombre;
-    cuerpo.innerHTML = detalle.replace(/\n/g, "<br>");
-    modal.style.display = "flex";
-  }
-
-  function cerrarModalDetalles() {
-    document.getElementById("modalDetalles").style.display = "none";
-  }
-
-  document.getElementById("searchInput").addEventListener("input", filtrar);
-  document.getElementById("categoryFilter").addEventListener("change", filtrar);
-
-  function filtrar() {
-    const texto = document.getElementById("searchInput").value.toLowerCase();
-    const categoria = document.getElementById("categoryFilter").value;
-    const filtrados = productos.filter(p =>
-      (categoria === "Todas" || p.categoria === categoria) &&
-      (p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto))
-    );
-    mostrarProductos(filtrados);
-  }
-
-  cargarDatos();
-</script>
+    <script src="script.js"></script>
 </body>
 </html>
