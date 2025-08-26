@@ -1,43 +1,63 @@
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbKwdz96U-UvqfTDtGPL0zUziDnARLOz249Gdc4CApl_PQ-nt1jQpC15S_UOwawE2SGK2yms6_AwXM/pub?gid=0&single=true&output=json";
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbKwdz96U-UvqfTDtGPL0zUziDnARLOz249Gdc4CApl_PQ-nt1jQpC15S_UOwawE2SGK2yms6_AwXM/pub?gid=0&single=true&output=csv";
 const TIPO_CAMBIO = 3.6;
 let productos = [];
 
 async function cargarDatos() {
     try {
         const res = await fetch(sheetURL);
-        const data = await res.json();
+        const csvData = await res.text();
+        productos = parseCSV(csvData);
 
-        // Extraer los datos de las filas, que están bajo "feed.entry" en el JSON
-        const rows = data.feed.entry;
-
-        // Mapear los datos de las filas a un formato más fácil de usar
-        productos = rows.map(row => ({
-            id: row.gsx$id.$t,
-            nombre: row.gsx$nombredelservicio.$t,
-            imagen: row.gsx$imagen.$t,
-            descripcion: row.gsx$descripción.$t,
-            categoria: row.gsx$categoría.$t,
-            detalles: row.gsx$detalles.$t?.trim() || "",
-            planesPersonalizados: (row.gsx$planesyprecios.$t || "").split("|").map(entry => {
-                const [nombre, precio] = entry.split(":");
-                return {
-                    nombre: nombre?.trim(),
-                    precio: parseFloat(precio)
-                };
-            }).filter(p => p.nombre && !isNaN(p.precio))
-        }));
-
-        actualizarCategorias();
-        mostrarProductos(productos);
+        if (productos.length > 0) {
+            actualizarCategorias();
+            mostrarProductos(productos);
+        } else {
+            throw new Error("No se encontraron productos en la hoja.");
+        }
     } catch (error) {
         console.error("Error al cargar los datos:", error);
         document.getElementById("productos").innerHTML = "<p>Error al cargar el catálogo. Por favor, inténtelo de nuevo más tarde.</p>";
     }
 }
 
+// Función para parsear datos CSV de forma segura
+function parseCSV(csv) {
+    const lines = csv.split("\n");
+    const headers = lines[0].split(",").map(header => header.trim().toLowerCase());
+    const data = lines.slice(1).map(line => {
+        const values = line.split(",").map(value => value.trim());
+        const row = {};
+        headers.forEach((header, i) => {
+            if (header === "planesyprecios") {
+                row[header] = values[i];
+            } else {
+                row[header] = values[i];
+            }
+        });
+        return row;
+    });
+
+    return data.filter(p => p.id && p.nombre).map(p => ({
+        id: p.id,
+        nombre: p.nombre,
+        imagen: p.imagen,
+        descripcion: p.descripci_n,
+        categoria: p.categor_a,
+        detalles: p.detalles,
+        planesPersonalizados: (p.planesyprecios || "").split("|").map(entry => {
+            const [nombre, precio] = entry.split(":");
+            return {
+                nombre: nombre?.trim(),
+                precio: parseFloat(precio)
+            };
+        }).filter(plan => plan.nombre && !isNaN(plan.precio))
+    }));
+}
+
 function actualizarCategorias() {
     const select = document.getElementById("categoryFilter");
-    const categorias = [...new Set(productos.map(p => p.categoria))];
+    const categorias = [...new Set(productos.map(p => p.categoria))].filter(Boolean); // Filtra valores vacíos
+    select.innerHTML = '<option value="Todas">Todas</option>';
     categorias.forEach(cat => {
         const option = document.createElement("option");
         option.value = cat;
@@ -134,7 +154,7 @@ function filtrar() {
     const categoria = document.getElementById("categoryFilter").value;
     const filtrados = productos.filter(p =>
         (categoria === "Todas" || p.categoria === categoria) &&
-        (p.nombre.toLowerCase().includes(texto) || p.descripcion.toLowerCase().includes(texto))
+        (p.nombre.toLowerCase().includes(texto) || (p.descripcion && p.descripcion.toLowerCase().includes(texto)))
     );
     mostrarProductos(filtrados);
 }
