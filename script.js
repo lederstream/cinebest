@@ -1,26 +1,24 @@
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbKwdz96U-UvqfTDtGPL0zUziDnARLOz249Gdc4CApl_PQ-nt1jQpC15S_UOwawE2SGK2yms6_AwXM/pub?gid=0&single=true&output=csv";
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbKwdz96U-UvqfTDtGPL0zUziDnARLOz249Gdc4CApl_PQ-nt1jQpC15S_UOwawE2SGK2yms6_AwXM/pub?gid=0&single=true&output=json";
 const TIPO_CAMBIO = 3.6;
 let productos = [];
 
 async function cargarDatos() {
     try {
         const res = await fetch(sheetURL);
-        const csv = await res.text();
+        const data = await res.json();
 
-        const parsed = Papa.parse(csv, {
-            header: true,
-            skipEmptyLines: true
-        });
+        // Extraer los datos de las filas, que están bajo "feed.entry" en el JSON
+        const rows = data.feed.entry;
 
-        productos = parsed.data.map(cols => ({
-            id: cols["ID"],
-            nombre: cols["Nombre del Servicio"],
-            imagen: cols["Imagen"],
-            descripcion: cols["Descripción"],
-            categoria: cols["Categoría"],
-            tipo: (cols["Tipo"] || "").toLowerCase(),
-            detalles: cols["Detalles"]?.trim() || "",
-            planesPersonalizados: (cols["Planes y Precios"] || "").split("|").map(entry => {
+        // Mapear los datos de las filas a un formato más fácil de usar
+        productos = rows.map(row => ({
+            id: row.gsx$id.$t,
+            nombre: row.gsx$nombredelservicio.$t,
+            imagen: row.gsx$imagen.$t,
+            descripcion: row.gsx$descripción.$t,
+            categoria: row.gsx$categoría.$t,
+            detalles: row.gsx$detalles.$t?.trim() || "",
+            planesPersonalizados: (row.gsx$planesyprecios.$t || "").split("|").map(entry => {
                 const [nombre, precio] = entry.split(":");
                 return {
                     nombre: nombre?.trim(),
